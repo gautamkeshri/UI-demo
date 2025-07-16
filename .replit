@@ -5,6 +5,7 @@ hidden = [".pythonlibs"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["cargo", "libiconv", "rustc"]
 
 [unitTest]
 language = "python3"
