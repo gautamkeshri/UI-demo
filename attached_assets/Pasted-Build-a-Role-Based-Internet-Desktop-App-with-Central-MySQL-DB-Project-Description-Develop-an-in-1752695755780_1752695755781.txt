@@ -1,0 +1,93 @@
+Build a Role-Based Internet Desktop App with Central MySQL DB
+
+Project Description:
+Develop an internet-connected desktop application that connects to a central MySQL database hosted on a local server. Multiple desktop clients should be able to connect to this central DB concurrently over the network.
+
+Key Requirements:
+
+Role-Based Login:
+The app must support user authentication with the following roles:
+
+Admin
+
+Initiator
+
+Production Head
+
+Operators
+
+User
+
+Approvers
+
+Each role will have access control to specific features and workflows.
+
+Form Creation & Approval Workflow:
+
+Initiator: Creates a new form. The form consists of configurable questions (text fields, dropdowns, etc.). The initiator fills out the form data and submits it for approval.
+
+User: Receives the form for review, provides approval or rejection, and can add comments with a timestamp.
+
+Approver (optional): In some cases, an approver is required to add their comments/approval before it goes further.
+
+Production Head: The final approval step. They see the form with all previous comments and timestamps and approve/reject it.
+
+The approval sequence is:
+
+cpp
+Copy
+Edit
+Initiator → User → (optional Approver) → Production Head
+Each step must record:
+
+Who approved/rejected
+
+Timestamp of the action
+
+Comments (if any)
+
+Database:
+
+Use MySQL hosted on a local server acting as the central database.
+
+All user authentication, roles, forms, approval statuses, comments, and timestamps must be stored here.
+
+Ensure connection pooling and handle multiple clients simultaneously.
+
+Tech Stack:
+
+Desktop application framework (suggested: Electron, Tauri, or PyQt).
+
+Backend logic in Python, Node.js, or another suitable language.
+
+Connect to MySQL with a secure connection.
+
+Basic UI for login, form creation, form review/approval, and admin management of roles/users.
+
+Additional Requirements:
+
+Basic user management screen for Admins (create/edit/delete users & assign roles).
+
+Logging of all actions for audit purposes.
+
+Secure credentials storage and secure DB connection.
+
+Graceful error handling for network failures.
+
+Deployable installer for Windows/Linux desktops.
+
+Deliverables:
+
+Working prototype with all features above.
+
+Well-structured source code.
+
+Documentation on how to set up the DB server, configure clients, and deploy the app.
+
+A readme explaining how to run the app locally for testing.
+
+Optional:
+If time permits, add email notifications to notify the next approver in the sequence when an approval is pending.
+
+Goal:
+A simple but robust internet desktop app for centralized form approval workflows across multiple user roles, backed by a central MySQL server.
