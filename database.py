@@ -7,18 +7,31 @@ from datetime import datetime
 
 class DatabaseManager:
 
-    def __init__(self):
-        self.database_url = os.environ.get('DATABASE_URL')
-        if not self.database_url:
-            raise ValueError("DATABASE_URL environment variable not set")
+    def __init__(self, database_url=None):
+        self.database_url = database_url or os.environ.get('DATABASE_URL')
+        self.connection_pool = None
+        
+        if self.database_url:
+            self.connect_to_database()
 
-        # Create connection pool
-        self.connection_pool = pool.SimpleConnectionPool(
-            1, 10, self.database_url.replace('.us-east-2',
-                                             '-pooler.us-east-2'))
-        self.init_database()
+    def connect_to_database(self):
+        try:
+            # Create connection pool
+            self.connection_pool = pool.SimpleConnectionPool(
+                1, 10, self.database_url.replace('.us-east-2',
+                                                 '-pooler.us-east-2'))
+            self.init_database()
+            return True
+        except Exception as e:
+            print(f"Database connection failed: {e}")
+            return False
+
+    def is_connected(self):
+        return self.connection_pool is not None
 
     def get_connection(self):
+        if not self.connection_pool:
+            raise RuntimeError("Database not connected")
         return self.connection_pool.getconn()
 
     def return_connection(self, conn):

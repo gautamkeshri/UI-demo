@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import json
 from datetime import datetime
+import psycopg2
 from database import DatabaseManager
 
 class FormApprovalApp:
@@ -19,11 +20,150 @@ class FormApprovalApp:
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-        self.show_login()
+        # Check if database is connected
+        if not self.db.is_connected():
+            self.show_database_config()
+        else:
+            self.show_login()
     
     def clear_frame(self):
         for widget in self.main_frame.winfo_children():
             widget.destroy()
+    
+    def show_database_config(self):
+        self.clear_frame()
+        
+        # Database configuration frame
+        config_frame = ttk.LabelFrame(self.main_frame, text="Database Configuration", padding=20)
+        config_frame.pack(expand=True)
+        
+        ttk.Label(config_frame, text="Please configure your database connection:", 
+                 font=('Arial', 12, 'bold')).grid(row=0, column=0, columnspan=2, pady=10)
+        
+        ttk.Label(config_frame, text="Host:").grid(row=1, column=0, sticky='e', padx=5, pady=5)
+        self.host_entry = ttk.Entry(config_frame, width=30)
+        self.host_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.host_entry.insert(0, "localhost")
+        
+        ttk.Label(config_frame, text="Port:").grid(row=2, column=0, sticky='e', padx=5, pady=5)
+        self.port_entry = ttk.Entry(config_frame, width=30)
+        self.port_entry.grid(row=2, column=1, padx=5, pady=5)
+        self.port_entry.insert(0, "5432")
+        
+        ttk.Label(config_frame, text="Database Name:").grid(row=3, column=0, sticky='e', padx=5, pady=5)
+        self.dbname_entry = ttk.Entry(config_frame, width=30)
+        self.dbname_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.dbname_entry.insert(0, "forms_db")
+        
+        ttk.Label(config_frame, text="Username:").grid(row=4, column=0, sticky='e', padx=5, pady=5)
+        self.db_username_entry = ttk.Entry(config_frame, width=30)
+        self.db_username_entry.grid(row=4, column=1, padx=5, pady=5)
+        self.db_username_entry.insert(0, "postgres")
+        
+        ttk.Label(config_frame, text="Password:").grid(row=5, column=0, sticky='e', padx=5, pady=5)
+        self.db_password_entry = ttk.Entry(config_frame, show="*", width=30)
+        self.db_password_entry.grid(row=5, column=1, padx=5, pady=5)
+        
+        ttk.Button(config_frame, text="Test Connection", 
+                  command=self.test_database_connection).grid(row=6, column=0, pady=10)
+        ttk.Button(config_frame, text="Connect", 
+                  command=self.connect_database).grid(row=6, column=1, pady=10)
+        
+        # Alternative: Use DATABASE_URL
+        ttk.Separator(config_frame, orient='horizontal').grid(row=7, column=0, columnspan=2, 
+                                                             sticky='ew', pady=20)
+        
+        ttk.Label(config_frame, text="Or enter DATABASE_URL directly:").grid(row=8, column=0, 
+                                                                            columnspan=2, pady=5)
+        self.database_url_entry = ttk.Entry(config_frame, width=60)
+        self.database_url_entry.grid(row=9, column=0, columnspan=2, padx=5, pady=5)
+        
+        ttk.Button(config_frame, text="Connect with URL", 
+                  command=self.connect_with_url).grid(row=10, column=0, columnspan=2, pady=10)
+        
+        # Instructions
+        info_frame = ttk.LabelFrame(self.main_frame, text="Instructions", padding=10)
+        info_frame.pack(pady=10, fill='x')
+        
+        instructions = """
+For Replit PostgreSQL:
+1. Go to the Secrets tab and add DATABASE_URL environment variable
+2. Or use the database configuration above with your PostgreSQL details
+3. Make sure your PostgreSQL service is running
+
+Example DATABASE_URL format:
+postgresql://username:password@host:port/database_name
+        """
+        ttk.Label(info_frame, text=instructions, justify='left').pack()
+    
+    def test_database_connection(self):
+        try:
+            host = self.host_entry.get().strip()
+            port = self.port_entry.get().strip()
+            dbname = self.dbname_entry.get().strip()
+            username = self.db_username_entry.get().strip()
+            password = self.db_password_entry.get().strip()
+            
+            if not all([host, port, dbname, username]):
+                messagebox.showerror("Error", "Please fill in all required fields")
+                return
+            
+            database_url = f"postgresql://{username}:{password}@{host}:{port}/{dbname}"
+            
+            # Test connection
+            conn = psycopg2.connect(database_url)
+            conn.close()
+            
+            messagebox.showinfo("Success", "Database connection successful!")
+            
+        except Exception as e:
+            messagebox.showerror("Connection Error", f"Failed to connect to database:\n{str(e)}")
+    
+    def connect_database(self):
+        try:
+            host = self.host_entry.get().strip()
+            port = self.port_entry.get().strip()
+            dbname = self.dbname_entry.get().strip()
+            username = self.db_username_entry.get().strip()
+            password = self.db_password_entry.get().strip()
+            
+            if not all([host, port, dbname, username]):
+                messagebox.showerror("Error", "Please fill in all required fields")
+                return
+            
+            database_url = f"postgresql://{username}:{password}@{host}:{port}/{dbname}"
+            
+            # Create new database manager with the URL
+            self.db = DatabaseManager(database_url)
+            
+            if self.db.connect_to_database():
+                messagebox.showinfo("Success", "Connected to database successfully!")
+                self.show_login()
+            else:
+                messagebox.showerror("Error", "Failed to connect to database")
+                
+        except Exception as e:
+            messagebox.showerror("Connection Error", f"Failed to connect to database:\n{str(e)}")
+    
+    def connect_with_url(self):
+        try:
+            database_url = self.database_url_entry.get().strip()
+            
+            if not database_url:
+                messagebox.showerror("Error", "Please enter a DATABASE_URL")
+                return
+            
+            # Create new database manager with the URL
+            self.db = DatabaseManager(database_url)
+            
+            if self.db.connect_to_database():
+                messagebox.showinfo("Success", "Connected to database successfully!")
+                self.show_login()
+            else:
+                messagebox.showerror("Error", "Failed to connect to database")
+                
+        except Exception as e:
+            messagebox.showerror("Connection Error", f"Failed to connect to database:\n{str(e)}")
     
     def show_login(self):
         self.clear_frame()
