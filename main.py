@@ -214,6 +214,10 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
                             self.create_tables()
                         else:
                             self.show_login()
+
+                    # Initialize the database with the default admin user
+                    self.db.init_database()  # Initialize database and create default admin
+
                 else:
                     messagebox.showerror(
                         "Error",
@@ -258,6 +262,10 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
                             self.create_tables()
                         else:
                             self.show_login()
+
+                    # Initialize the database with the default admin user
+                    self.db.init_database()  # Initialize database and create default admin
+
                 else:
                     messagebox.showerror(
                         "Error",
