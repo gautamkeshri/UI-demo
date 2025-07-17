@@ -137,7 +137,9 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
                 messagebox.showerror("Error", "Please fill in all required fields")
                 return
 
-            database_url = f"mysql://{username}:{password}@{host}:{port}/{dbname}"
+            import urllib.parse
+            encoded_password = urllib.parse.quote(password, safe='')
+            database_url = f"mysql://{username}:{encoded_password}@{host}:{port}/{dbname}"
 
             # Create new database manager with the URL
             self.db = DatabaseManager(database_url)

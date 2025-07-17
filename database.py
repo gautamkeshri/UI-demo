@@ -16,7 +16,7 @@ class DatabaseManager:
     def connect_to_database(self):
         try:
             # Parse DATABASE_URL for MySQL
-            if self.database_url.startswith('mysql://'):
+            if self.database_url and self.database_url.startswith('mysql://'):
                 # Parse mysql://user:password@host:port/database
                 import urllib.parse
                 parsed = urllib.parse.urlparse(self.database_url)
@@ -25,7 +25,7 @@ class DatabaseManager:
                     'host': parsed.hostname,
                     'port': parsed.port or 3306,
                     'user': parsed.username,
-                    'password': parsed.password,
+                    'password': urllib.parse.unquote(parsed.password) if parsed.password else '',
                     'database': parsed.path[1:] if parsed.path else None,
                     'autocommit': False
                 }
