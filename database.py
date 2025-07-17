@@ -1,34 +1,34 @@
-
 import os
 import psycopg2
 from psycopg2 import pool
 import bcrypt
 from datetime import datetime
 
+
 class DatabaseManager:
+
     def __init__(self):
         self.database_url = os.environ.get('DATABASE_URL')
         if not self.database_url:
             raise ValueError("DATABASE_URL environment variable not set")
-        
+
         # Create connection pool
         self.connection_pool = pool.SimpleConnectionPool(
-            1, 10, 
-            self.database_url.replace('.us-east-2', '-pooler.us-east-2')
-        )
+            1, 10, self.database_url.replace('.us-east-2',
+                                             '-pooler.us-east-2'))
         self.init_database()
-    
+
     def get_connection(self):
         return self.connection_pool.getconn()
-    
+
     def return_connection(self, conn):
         self.connection_pool.putconn(conn)
-    
+
     def init_database(self):
         conn = self.get_connection()
         try:
             cur = conn.cursor()
-            
+
             # Create users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -41,7 +41,7 @@ class DatabaseManager:
                     is_active BOOLEAN DEFAULT TRUE
                 )
             """)
-            
+
             # Create forms table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS forms (
@@ -56,7 +56,7 @@ class DatabaseManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             # Create approvals table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS approvals (
@@ -69,7 +69,7 @@ class DatabaseManager:
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             # Create audit_log table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS audit_log (
@@ -80,18 +80,21 @@ class DatabaseManager:
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             # Create default admin user if not exists
             cur.execute("SELECT COUNT(*) FROM users WHERE role = 'Admin'")
             admin_count = cur.fetchone()[0]
-            
+
             if admin_count == 0:
-                admin_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                cur.execute("""
+                admin_password = bcrypt.hashpw(
+                    'admin123'.encode('utf-8'),
+                    bcrypt.gensalt()).decode('utf-8')
+                cur.execute(
+                    """
                     INSERT INTO users (username, password_hash, role, email)
                     VALUES (%s, %s, %s, %s)
                 """, ('admin', admin_password, 'Admin', 'admin@company.com'))
-            
+
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -99,33 +102,32 @@ class DatabaseManager:
         finally:
             cur.close()
             self.return_connection(conn)
-    
+
     def authenticate_user(self, username, password):
         conn = self.get_connection()
         try:
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT id, username, password_hash, role, is_active 
                 FROM users WHERE username = %s
-            """, (username,))
-            
+            """, (username, ))
+
             user = cur.fetchone()
-            if user and user[4] and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):
-                return {
-                    'id': user[0],
-                    'username': user[1],
-                    'role': user[3]
-                }
+            if user and user[4] and bcrypt.checkpw(password.encode('utf-8'),
+                                                   user[2].encode('utf-8')):
+                return {'id': user[0], 'username': user[1], 'role': user[3]}
             return None
         finally:
             cur.close()
             self.return_connection(conn)
-    
+
     def log_action(self, user_id, action, details=""):
         conn = self.get_connection()
         try:
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO audit_log (user_id, action, details)
                 VALUES (%s, %s, %s)
             """, (user_id, action, details))

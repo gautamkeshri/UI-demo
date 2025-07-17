@@ -15,12 +15,3 @@ requiredFiles = [".replit", "replit.nix"]
 
 [workflows]
 runButton = "Run App"
-
-[[workflows.workflow]]
-name = "Run App"
-author = 45110674
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python main.py"
