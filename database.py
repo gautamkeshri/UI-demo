@@ -1,4 +1,3 @@
-
 import os
 import mysql.connector
 from mysql.connector import pooling
@@ -10,18 +9,18 @@ class DatabaseManager:
     def __init__(self, database_url=None):
         self.database_url = database_url or os.environ.get('DATABASE_URL')
         self.connection_pool = None
-        
+
         if self.database_url:
             self.connect_to_database()
 
     def connect_to_database(self):
         try:
             # Parse DATABASE_URL for MySQL
-            if self.database_url and self.database_url.startswith('mysql://'):
+            if self.database_url.startswith('mysql://'):
                 # Parse mysql://user:password@host:port/database
                 import urllib.parse
                 parsed = urllib.parse.urlparse(self.database_url)
-                
+
                 config = {
                     'host': parsed.hostname,
                     'port': parsed.port or 3306,
@@ -40,11 +39,11 @@ class DatabaseManager:
                     'database': os.environ.get('DB_NAME', 'forms_db'),
                     'autocommit': False
                 }
-            
+
             # First test the connection with a simple connection
             test_conn = mysql.connector.connect(**config)
             test_conn.close()
-            
+
             # Create connection pool
             self.connection_pool = pooling.MySQLConnectionPool(
                 pool_name="mypool",
@@ -52,13 +51,11 @@ class DatabaseManager:
                 pool_reset_session=True,
                 **config
             )
-            
-            self.init_database()
+
             return True
         except Exception as e:
             print(f"Database connection failed: {e}")
-            # Re-raise the exception so the GUI can show the specific error
-            raise e
+            return False
 
     def is_connected(self):
         return self.connection_pool is not None
