@@ -1,9 +1,30 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import json
+import os
 from datetime import datetime
 import mysql.connector
 from database import DatabaseManager
+
+
+class ConfigManager:
+
+    def __init__(self, config_file="config.json"):
+        self.config_file = config_file
+
+    def load_config(self):
+        try:
+            with open(self.config_file, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+        except json.JSONDecodeError:
+            print("Error decoding config file. Using default settings.")
+            return {}
+
+    def save_config(self, config_data):
+        with open(self.config_file, 'w') as f:
+            json.dump(config_data, f, indent=4)
 
 
 class FormApprovalApp:
@@ -13,6 +34,9 @@ class FormApprovalApp:
         self.root.title("Form Approval System")
         self.root.geometry("1000x700")
         self.root.configure(bg='#f0f0f0')
+
+        self.config_manager = ConfigManager()
+        self.config = self.config_manager.load_config()
 
         self.db = DatabaseManager()
         self.current_user = None
@@ -54,7 +78,7 @@ class FormApprovalApp:
                                                    pady=5)
         self.host_entry = ttk.Entry(config_frame, width=30)
         self.host_entry.grid(row=1, column=1, padx=5, pady=5)
-        self.host_entry.insert(0, "localhost")
+        self.host_entry.insert(0, self.config.get("host", "localhost"))
 
         ttk.Label(config_frame, text="Port:").grid(row=2,
                                                    column=0,
@@ -63,7 +87,7 @@ class FormApprovalApp:
                                                    pady=5)
         self.port_entry = ttk.Entry(config_frame, width=30)
         self.port_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.port_entry.insert(0, "3306")
+        self.port_entry.insert(0, self.config.get("port", "3306"))
 
         ttk.Label(config_frame, text="Database Name:").grid(row=3,
                                                             column=0,
@@ -72,7 +96,7 @@ class FormApprovalApp:
                                                             pady=5)
         self.dbname_entry = ttk.Entry(config_frame, width=30)
         self.dbname_entry.grid(row=3, column=1, padx=5, pady=5)
-        self.dbname_entry.insert(0, "forms_db")
+        self.dbname_entry.insert(0, self.config.get("dbname", "forms_db"))
 
         ttk.Label(config_frame, text="Username:").grid(row=4,
                                                        column=0,
@@ -81,7 +105,7 @@ class FormApprovalApp:
                                                        pady=5)
         self.db_username_entry = ttk.Entry(config_frame, width=30)
         self.db_username_entry.grid(row=4, column=1, padx=5, pady=5)
-        self.db_username_entry.insert(0, "root")
+        self.db_username_entry.insert(0, self.config.get("username", "root"))
 
         ttk.Label(config_frame, text="Password:").grid(row=5,
                                                        column=0,
@@ -90,41 +114,51 @@ class FormApprovalApp:
                                                        pady=5)
         self.db_password_entry = ttk.Entry(config_frame, show="*", width=30)
         self.db_password_entry.grid(row=5, column=1, padx=5, pady=5)
+        self.db_password_entry.insert(0, self.config.get("password", ""))
+
+        self.save_config_var = tk.BooleanVar(value=True)
+        save_config_check = ttk.Checkbutton(config_frame,
+                                            text="Save Credentials",
+                                            variable=self.save_config_var)
+        save_config_check.grid(row=6, column=0, columnspan=2, pady=5)
 
         ttk.Button(config_frame,
                    text="Test Connection",
-                   command=self.test_database_connection).grid(row=6,
+                   command=self.test_database_connection).grid(row=7,
                                                                column=0,
                                                                pady=10)
         ttk.Button(config_frame, text="Connect",
-                   command=self.connect_database).grid(row=6,
+                   command=self.connect_database).grid(row=7,
                                                        column=1,
                                                        pady=10)
 
         # Alternative: Use DATABASE_URL
-        ttk.Separator(config_frame, orient='horizontal').grid(row=7,
+        ttk.Separator(config_frame, orient='horizontal').grid(row=8,
                                                               column=0,
                                                               columnspan=2,
                                                               sticky='ew',
                                                               pady=20)
 
         ttk.Label(config_frame,
-                  text="Or enter DATABASE_URL directly:").grid(row=8,
+                  text="Or enter DATABASE_URL directly:").grid(row=9,
                                                                column=0,
                                                                columnspan=2,
                                                                pady=5)
         self.database_url_entry = ttk.Entry(config_frame, width=60)
-        self.database_url_entry.grid(row=9,
+        self.database_url_entry.grid(row=10,
                                      column=0,
                                      columnspan=2,
                                      padx=5,
                                      pady=5)
         self.database_url_entry.insert(
-            0, "mysql://username:password@host:port/database_name")
+            0,
+            self.config.get(
+                "database_url", "mysql://username:password@host:port/database_name"
+            ))
 
         ttk.Button(config_frame,
                    text="Connect with URL",
-                   command=self.connect_with_url).grid(row=10,
+                   command=self.connect_with_url).grid(row=11,
                                                        column=0,
                                                        columnspan=2,
                                                        pady=10)
@@ -218,6 +252,17 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
                     # Initialize the database with the default admin user
                     self.db.init_database()  # Initialize database and create default admin
 
+                    # Save config if checkbox is checked
+                    if self.save_config_var.get():
+                        config_data = {
+                            "host": host,
+                            "port": port,
+                            "dbname": dbname,
+                            "username": username,
+                            "password": password
+                        }
+                        self.config_manager.save_config(config_data)
+
                 else:
                     messagebox.showerror(
                         "Error",
@@ -265,6 +310,11 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
 
                     # Initialize the database with the default admin user
                     self.db.init_database()  # Initialize database and create default admin
+
+                    # Save URL config if checkbox is checked
+                    if hasattr(self, 'save_config_var') and self.save_config_var.get():
+                        config_data = {"database_url": database_url}
+                        self.config_manager.save_config(config_data)
 
                 else:
                     messagebox.showerror(
