@@ -1,12 +1,12 @@
+
 import os
-import psycopg2
-from psycopg2 import pool
+import mysql.connector
+from mysql.connector import pooling
 import bcrypt
 from datetime import datetime
 
 
 class DatabaseManager:
-
     def __init__(self, database_url=None):
         self.database_url = database_url or os.environ.get('DATABASE_URL')
         self.connection_pool = None
@@ -16,10 +16,39 @@ class DatabaseManager:
 
     def connect_to_database(self):
         try:
+            # Parse DATABASE_URL for MySQL
+            if self.database_url.startswith('mysql://'):
+                # Parse mysql://user:password@host:port/database
+                import urllib.parse
+                parsed = urllib.parse.urlparse(self.database_url)
+                
+                config = {
+                    'host': parsed.hostname,
+                    'port': parsed.port or 3306,
+                    'user': parsed.username,
+                    'password': parsed.password,
+                    'database': parsed.path[1:] if parsed.path else None,
+                    'autocommit': False
+                }
+            else:
+                # Fallback to individual environment variables
+                config = {
+                    'host': os.environ.get('DB_HOST', 'localhost'),
+                    'port': int(os.environ.get('DB_PORT', 3306)),
+                    'user': os.environ.get('DB_USER', 'root'),
+                    'password': os.environ.get('DB_PASSWORD', ''),
+                    'database': os.environ.get('DB_NAME', 'forms_db'),
+                    'autocommit': False
+                }
+            
             # Create connection pool
-            self.connection_pool = pool.SimpleConnectionPool(
-                1, 10, self.database_url.replace('.us-east-2',
-                                                 '-pooler.us-east-2'))
+            self.connection_pool = pooling.MySQLConnectionPool(
+                pool_name="mypool",
+                pool_size=10,
+                pool_reset_session=True,
+                **config
+            )
+            
             self.init_database()
             return True
         except Exception as e:
@@ -32,10 +61,10 @@ class DatabaseManager:
     def get_connection(self):
         if not self.connection_pool:
             raise RuntimeError("Database not connected")
-        return self.connection_pool.getconn()
+        return self.connection_pool.get_connection()
 
     def return_connection(self, conn):
-        self.connection_pool.putconn(conn)
+        conn.close()
 
     def init_database(self):
         conn = self.get_connection()
@@ -45,10 +74,10 @@ class DatabaseManager:
             # Create users table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
+                    id INT AUTO_INCREMENT PRIMARY KEY,
                     username VARCHAR(50) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
-                    role VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'Initiator', 'Production Head', 'Operator', 'User', 'Approver')),
+                    role ENUM('Admin', 'Initiator', 'Production Head', 'Operator', 'User', 'Approver') NOT NULL,
                     email VARCHAR(100),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE
@@ -58,39 +87,43 @@ class DatabaseManager:
             # Create forms table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS forms (
-                    id SERIAL PRIMARY KEY,
+                    id INT AUTO_INCREMENT PRIMARY KEY,
                     title VARCHAR(200) NOT NULL,
                     description TEXT,
                     form_data JSON NOT NULL,
-                    created_by INTEGER REFERENCES users(id),
-                    current_status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'in_review')),
-                    current_step INTEGER DEFAULT 1,
+                    created_by INT,
+                    current_status ENUM('pending', 'approved', 'rejected', 'in_review') DEFAULT 'pending',
+                    current_step INT DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (created_by) REFERENCES users(id)
                 )
             """)
 
             # Create approvals table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS approvals (
-                    id SERIAL PRIMARY KEY,
-                    form_id INTEGER REFERENCES forms(id),
-                    user_id INTEGER REFERENCES users(id),
-                    step_number INTEGER NOT NULL,
-                    action VARCHAR(10) CHECK (action IN ('approved', 'rejected')),
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    form_id INT,
+                    user_id INT,
+                    step_number INT NOT NULL,
+                    action ENUM('approved', 'rejected'),
                     comments TEXT,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (form_id) REFERENCES forms(id),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             """)
 
             # Create audit_log table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS audit_log (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id),
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT,
                     action VARCHAR(100) NOT NULL,
                     details TEXT,
-                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             """)
 
@@ -124,7 +157,7 @@ class DatabaseManager:
                 """
                 SELECT id, username, password_hash, role, is_active 
                 FROM users WHERE username = %s
-            """, (username, ))
+            """, (username,))
 
             user = cur.fetchone()
             if user and user[4] and bcrypt.checkpw(password.encode('utf-8'),

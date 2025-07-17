@@ -10,6 +10,7 @@ numpy = "^1.26.3"
 psycopg2-binary = "^2.9.10"
 bcrypt = "^4.3.0"
 datetime = "^5.5"
+mysql-connector-python = "^9.3.0"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md

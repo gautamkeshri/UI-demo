@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import json
 from datetime import datetime
-import psycopg2
+import mysql.connector
 from database import DatabaseManager
 
 class FormApprovalApp:
@@ -48,7 +48,7 @@ class FormApprovalApp:
         ttk.Label(config_frame, text="Port:").grid(row=2, column=0, sticky='e', padx=5, pady=5)
         self.port_entry = ttk.Entry(config_frame, width=30)
         self.port_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.port_entry.insert(0, "5432")
+        self.port_entry.insert(0, "3306")
         
         ttk.Label(config_frame, text="Database Name:").grid(row=3, column=0, sticky='e', padx=5, pady=5)
         self.dbname_entry = ttk.Entry(config_frame, width=30)
@@ -58,7 +58,7 @@ class FormApprovalApp:
         ttk.Label(config_frame, text="Username:").grid(row=4, column=0, sticky='e', padx=5, pady=5)
         self.db_username_entry = ttk.Entry(config_frame, width=30)
         self.db_username_entry.grid(row=4, column=1, padx=5, pady=5)
-        self.db_username_entry.insert(0, "postgres")
+        self.db_username_entry.insert(0, "root")
         
         ttk.Label(config_frame, text="Password:").grid(row=5, column=0, sticky='e', padx=5, pady=5)
         self.db_password_entry = ttk.Entry(config_frame, show="*", width=30)
@@ -77,6 +77,7 @@ class FormApprovalApp:
                                                                             columnspan=2, pady=5)
         self.database_url_entry = ttk.Entry(config_frame, width=60)
         self.database_url_entry.grid(row=9, column=0, columnspan=2, padx=5, pady=5)
+        self.database_url_entry.insert(0, "mysql://username:password@host:port/database_name")
         
         ttk.Button(config_frame, text="Connect with URL", 
                   command=self.connect_with_url).grid(row=10, column=0, columnspan=2, pady=10)
@@ -86,13 +87,15 @@ class FormApprovalApp:
         info_frame.pack(pady=10, fill='x')
         
         instructions = """
-For Replit PostgreSQL:
+For MySQL database:
 1. Go to the Secrets tab and add DATABASE_URL environment variable
-2. Or use the database configuration above with your PostgreSQL details
-3. Make sure your PostgreSQL service is running
+2. Or use the database configuration above with your MySQL details
+3. Make sure your MySQL service is running
 
 Example DATABASE_URL format:
-postgresql://username:password@host:port/database_name
+mysql://username:password@host:port/database_name
+
+For local MySQL: mysql://root:password@localhost:3306/forms_db
         """
         ttk.Label(info_frame, text=instructions, justify='left').pack()
     
@@ -108,10 +111,14 @@ postgresql://username:password@host:port/database_name
                 messagebox.showerror("Error", "Please fill in all required fields")
                 return
             
-            database_url = f"postgresql://{username}:{password}@{host}:{port}/{dbname}"
-            
             # Test connection
-            conn = psycopg2.connect(database_url)
+            conn = mysql.connector.connect(
+                host=host,
+                port=int(port),
+                user=username,
+                password=password,
+                database=dbname
+            )
             conn.close()
             
             messagebox.showinfo("Success", "Database connection successful!")
@@ -131,7 +138,7 @@ postgresql://username:password@host:port/database_name
                 messagebox.showerror("Error", "Please fill in all required fields")
                 return
             
-            database_url = f"postgresql://{username}:{password}@{host}:{port}/{dbname}"
+            database_url = f"mysql://{username}:{password}@{host}:{port}/{dbname}"
             
             # Create new database manager with the URL
             self.db = DatabaseManager(database_url)
@@ -654,4 +661,4 @@ if __name__ == "__main__":
         app.run()
     except Exception as e:
         print(f"Error starting application: {e}")
-        print("Make sure PostgreSQL database is set up in Replit")
+        print("Make sure MySQL database is set up and configured properly")
