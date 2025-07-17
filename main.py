@@ -143,11 +143,15 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
             # Create new database manager with the URL
             self.db = DatabaseManager(database_url)
             
-            if self.db.connect_to_database():
-                messagebox.showinfo("Success", "Connected to database successfully!")
-                self.show_login()
-            else:
-                messagebox.showerror("Error", "Failed to connect to database")
+            # Try to connect and get detailed error if it fails
+            try:
+                if self.db.connect_to_database():
+                    messagebox.showinfo("Success", "Connected to database successfully!")
+                    self.show_login()
+                else:
+                    messagebox.showerror("Error", "Failed to connect to database. Please check your connection details.")
+            except Exception as db_error:
+                messagebox.showerror("Database Connection Error", f"Failed to connect to database:\n{str(db_error)}")
                 
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect to database:\n{str(e)}")
@@ -163,11 +167,15 @@ For local MySQL: mysql://root:password@localhost:3306/forms_db
             # Create new database manager with the URL
             self.db = DatabaseManager(database_url)
             
-            if self.db.connect_to_database():
-                messagebox.showinfo("Success", "Connected to database successfully!")
-                self.show_login()
-            else:
-                messagebox.showerror("Error", "Failed to connect to database")
+            # Try to connect and get detailed error if it fails
+            try:
+                if self.db.connect_to_database():
+                    messagebox.showinfo("Success", "Connected to database successfully!")
+                    self.show_login()
+                else:
+                    messagebox.showerror("Error", "Failed to connect to database. Please check your connection details.")
+            except Exception as db_error:
+                messagebox.showerror("Database Connection Error", f"Failed to connect to database:\n{str(db_error)}")
                 
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect to database:\n{str(e)}")
